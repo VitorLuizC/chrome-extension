@@ -15,6 +15,7 @@
   "permissions": [
     "idle",
     "alarms",
+    "storage",
     "notifications"
   ],
   "background" : {
