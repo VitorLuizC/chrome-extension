@@ -2,6 +2,7 @@ import axios from 'axios'
 import moment from 'moment'
 import { baseUrl } from '../cfg'
 import store from '../store'
+import FetchAdapter from '@vespaiach/axios-fetch-adapter'
 
 class RunrunTasks {
   constructor () {
@@ -12,7 +13,11 @@ class RunrunTasks {
   }
 
   getHttpClient () {
-    const client = axios.create()
+    const client = axios.create({
+      baseURL: `${baseUrl}/api/v1.0/`,
+      adapter: FetchAdapter
+    })
+
     client.interceptors.request.use((config) => {
       config.headers['App-Key'] = store.state.appkey
       config.headers['User-Token'] = store.state.usertoken
@@ -30,7 +35,7 @@ class RunrunTasks {
       }
 
       const request = this.getHttpClient()
-      request.get(`${baseUrl}/api/v1.0/users/me`)
+      request.get(`users/me`)
         .then(response => {
           store.dispatch({
             type: 'SET_USER',
@@ -46,7 +51,7 @@ class RunrunTasks {
     const request = this.getHttpClient()
     this.getUser()
       .then(user => {
-        return request.get(`${baseUrl}/api/v1.0/tasks`, {
+        return request.get(`tasks`, {
           params: {
             sort: 'priority',
             sort_dir: 'asc',
@@ -158,7 +163,7 @@ class RunrunTasks {
 
   pauseTask (id) {
     const request = this.getHttpClient()
-    request.post(`${baseUrl}/api/v1.0/tasks/${id}/pause`)
+    request.post(`tasks/${id}/pause`)
       .then(response => {
         this.updateTasks()
       })
@@ -166,7 +171,7 @@ class RunrunTasks {
 
   resumeTask (id) {
     const request = this.getHttpClient()
-    request.post(`${baseUrl}/api/v1.0/tasks/${id}/play`)
+    request.post(`tasks/${id}/play`)
       .then(response => {
         this.updateTasks()
       })

@@ -17,6 +17,7 @@
   "homepage": "https://github.com/Runrunit/chrome-extension#readme",
   "author": "UOL Educação",
   "devDependencies": {
+    "@vespaiach/axios-fetch-adapter": "^0.3.0",
     "axios": "^0.15.3",
     "babel-core": "^6.18.2",
     "babel-loader": "^6.2.8",
