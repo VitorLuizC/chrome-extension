@@ -7,22 +7,22 @@ class Storage {
    * @param {Partial<TData>} [defaultData]
    */
   constructor(key, defaultData = {}) {
-    this.key = key
-    this.defaultData = defaultData
+    this.key = key;
+    this.defaultData = defaultData;
   }
 
   /**
    * Loads the data from the storage.
    * @returns {Promise<TData>}
    */
-  async load() {
+  load() {
     return new Promise((resolve) => {
       chrome.storage.sync.get(this.key, (currentData) => {
-        const data = Object.assign({}, currentData, this.defaultData)
+        const data = Object.assign({}, currentData, this.defaultData);
 
-        resolve(/** @type {TData} */ (data))
-      })
-    })
+        resolve(/** @type {TData} */ (data));
+      });
+    });
   }
 
   /**
@@ -30,16 +30,20 @@ class Storage {
    * @param {(data: TData) => TData} fn
    * @returns {Promise<void>}
    */
-  async update(fn) {
-    const currentData = await this.load()
-    await chrome.storage.sync.set({
-      [this.key]: fn(currentData)
-    })
+  update(fn) {
+    return this.load().then((currentData) => {
+      return chrome.storage.sync.set({
+        [this.key]: fn(currentData),
+      });
+    });
   }
 
-  /** Removes the data from storage. */
-  async remove() {
-    await chrome.storage.sync.remove(this.key)
+  /**
+   * Removes the data from storage.
+   * @returns {Promise<void>}
+   */
+  remove() {
+    return chrome.storage.sync.remove(this.key);
   }
 
   /**
@@ -49,19 +53,19 @@ class Storage {
    */
   watch(fn) {
     const handler = (changes, area) => {
-      if (area !== 'sync') return
+      if (area !== 'sync') return;
 
-      const newData = /** @type {TData | null} */ (changes[this.key]?.newValue)
+      const newData = changes[this.key] && changes[this.key].newValue;
 
-      if (!newData) return
+      if (!newData) return;
 
-      fn(newData)
-    }
+      fn(/** @typedef {TData} */ newData);
+    };
 
-    chrome.storage.onChanged.addListener(handler)
+    chrome.storage.onChanged.addListener(handler);
 
-    return () => chrome.storage.onChanged.removeListener(handler)
+    return () => chrome.storage.onChanged.removeListener(handler);
   }
 }
 
-export default Storage
+export default Storage;
