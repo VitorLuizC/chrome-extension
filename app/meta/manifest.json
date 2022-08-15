@@ -1,12 +1,14 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Runrun.it",
   "short_name": "Runrun.it",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
-  "version": "1.0.7",
-  "browser_action": {
-    "default_icon": "images/icon_16_active.png",
+  "version": "1.1.0",
+  "action": {
+    "default_icon": {
+      "16": "images/icon_16_active.png"
+    },
     "default_title": "Runrun.it",
     "default_popup":"popup.html"
   },
@@ -16,8 +18,7 @@
     "notifications"
   ],
   "background" : {
-    "scripts": ["background.bundle.js"],
-    "persistent": false
+    "service_worker": "background.bundle.js"
   },
   "icons": {
     "16" : "images/favicon-16x16.png",
