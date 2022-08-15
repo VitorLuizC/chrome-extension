@@ -1,5 +1,4 @@
 import React from 'react'
-import { Link } from 'react-router'
 import moment from 'moment'
 import 'moment-duration-format'
 
@@ -10,16 +9,17 @@ import PopupHeader from '../PopupHeader'
 import PopupNav from '../PopupNav'
 import TaskDetail from '../TaskDetail'
 import { baseUrl } from '../../cfg'
+import store from '../../store'
+import withAuthenticated from '../../HOCs/withAuthenticated'
 
 class OpenedTasksPage extends React.Component {
   constructor (props) {
     super(props)
-    parent = this
 
     this.state = {
       tasks: undefined,
-      trackedTask: localStorage.getItem('trackedTask'),
-      autoPauseResume: !!((localStorage.getItem('autoPauseResume') && localStorage.getItem('autoPauseResume') === 'true')),
+      trackedTask: store.state.trackedTask,
+      autoPauseResume: store.state.autoPauseResume,
       taskExpanded: undefined
     }
 
@@ -31,12 +31,25 @@ class OpenedTasksPage extends React.Component {
     this.handleTaskTracking = this.handleTaskTracking.bind(this)
 
     chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.subject === 'taskUpdated') { parent.handleSetList(msg.body) }
+      if (msg.subject === 'taskUpdated') { this.handleSetList(msg.body) }
     })
   }
 
   componentDidMount () {
     this.handleGetList()
+
+    this.unsubscribe = store.subscribe((state) => {
+      this.setState({
+        trackedTask: state.trackedTask,
+        autoPauseResume: state.autoPauseResume,
+      })
+    })
+  }
+
+  componentWillUnmount() {
+    if (!this.unsubscribe) return
+
+    this.unsubscribe()
   }
 
   handleTaskDetailToggle (id) {
@@ -58,7 +71,8 @@ class OpenedTasksPage extends React.Component {
 
   handlePause (id) {
     return () => {
-      localStorage.setItem('trackedTask', '')
+      store.dispatch({ type: 'STOP_TRACKING_TASK' })
+
       request.post(`${baseUrl}/api/v1.0/tasks/${id}/pause`)
         .then(response => {
           this.handleGetList()
@@ -78,7 +92,7 @@ class OpenedTasksPage extends React.Component {
   handleSetList (tasks) {
     this.setState({
       tasks,
-      trackedTask: localStorage.getItem('trackedTask')
+      trackedTask: store.state.trackedTask
     })
   }
 
@@ -90,9 +104,13 @@ class OpenedTasksPage extends React.Component {
 
   handleTaskTracking (id) {
     return () => {
-      if (localStorage.getItem('trackedTask') && localStorage.getItem('trackedTask') == id) { localStorage.setItem('trackedTask', '') } else { localStorage.setItem('trackedTask', id) }
+      store.dispatch({
+        type: 'TOGGLE_TRACKING_TASK',
+        payload: id
+      })
+
       this.setState({
-        trackedTask: localStorage.getItem('trackedTask')
+        trackedTask: store.state.trackedTask
       })
     }
   }
@@ -107,7 +125,7 @@ class OpenedTasksPage extends React.Component {
     const timer = (seconds) => moment.duration(seconds, 'seconds').format('HH:mm', {trim: false})
 
     const tasks = (() => {
-      if (!localStorage.getItem('appkey')) {
+      if (!this.props.authenticated) {
         return (
           <div className='cover-page'>
             <a className='cover-page-button btn btn-block' href='options.html' target='_blank'>Settings Access</a>
@@ -199,7 +217,7 @@ class OpenedTasksPage extends React.Component {
         {/* <div className={style.TasksDiv}>
           {tasks}
         </div> */}
-        <div className={(localStorage.getItem('appkey')) ? `${style.TasksDiv}` : `${style.CoverDiv}`}>
+        <div className={`${this.props.authenticated ? style.TasksDiv : style.CoverDiv}`}>
           {tasks}
         </div>
       </div>
@@ -207,4 +225,4 @@ class OpenedTasksPage extends React.Component {
   }
 }
 
-export default OpenedTasksPage
+export default withAuthenticated(OpenedTasksPage)

@@ -1,5 +1,4 @@
 import React from 'react'
-import { Link } from 'react-router'
 import moment from 'moment'
 import 'moment-duration-format'
 
@@ -10,6 +9,8 @@ import PopupHeader from '../PopupHeader'
 import PopupNav from '../PopupNav'
 import TaskDetail from '../TaskDetail'
 import { baseUrl } from '../../cfg'
+import store from '../../store'
+import withAuthenticated from '../../HOCs/withAuthenticated'
 
 class ClosedTasksPage extends React.Component {
   constructor (props) {
@@ -17,7 +18,8 @@ class ClosedTasksPage extends React.Component {
 
     this.state = {
       tasks: undefined,
-      taskExpanded: undefined
+      taskExpanded: undefined,
+      user: store.state.user || {},
     }
 
     this.handleTaskDetailToggle = this.handleTaskDetailToggle.bind(this)
@@ -27,20 +29,31 @@ class ClosedTasksPage extends React.Component {
 
   componentDidMount () {
     this.handleGetList()
+
+    this.unsubscribe = store.subscribe((state) => {
+      this.setState({
+        user: state.user || {},
+      })
+    })
+  }
+
+  componentWillUnmount() {
+    if (!this.unsubscribe) return
+
+    this.unsubscribe()
   }
 
   handleGetList () {
     this.setState({
       tasks: undefined
     }, () => {
-      const user = (localStorage.getItem('user')) ? JSON.parse(localStorage.getItem('user')) : {}
       request.get(`${baseUrl}/api/v1.0/tasks`, {
         params: {
           sort: 'close_date',
           sort_dir: 'desc',
           limit: 10,
           is_closed: true,
-          task_list_user_id: user.id
+          task_list_user_id: this.state.user.id
         }
       })
         .then(response => {
@@ -78,7 +91,7 @@ class ClosedTasksPage extends React.Component {
     const timer = (seconds) => moment.duration(seconds, 'seconds').format('HH:mm', {trim: false})
 
     const tasks = (() => {
-      if (!localStorage.getItem('appkey')) {
+      if (!this.props.authenticated) {
         return (
           <div className='cover-page'>
             <a className='cover-page-button btn btn-block' href='options.html' target='_blank'>Settings Access</a>
@@ -159,4 +172,4 @@ class ClosedTasksPage extends React.Component {
   }
 }
 
-export default ClosedTasksPage
+export default withAuthenticated(ClosedTasksPage)

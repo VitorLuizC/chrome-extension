@@ -1,8 +1,8 @@
-/* globals localStorage */
 import React from 'react'
 import style from './style.css'
 import request from '../AuthInterceptor'
 import { baseUrl } from '../../cfg'
+import store from '../../store'
 
 const url = `${baseUrl}/api/v1.0/users/me`
 
@@ -10,16 +10,16 @@ class OptionsPage extends React.Component {
   constructor (props) {
     super(props)
 
-    const reminderEnabled = localStorage.getItem('reminderEnabled') && localStorage.getItem('reminderEnabled') === 'true'
-    const autoPauseResume = localStorage.getItem('autoPauseResume') && localStorage.getItem('autoPauseResume') === 'true'
+    const reminderEnabled = store.state.reminderEnabled
+    const autoPauseResume = store.state.autoPauseResume
 
     this.state = {
-      appkey: localStorage.getItem('appkey') || '',
+      appkey: store.state.appkey || '',
       autoPauseResume: autoPauseResume,
       msg: '',
       reminderEnabled: reminderEnabled,
-      reminderTimeInMinutes: localStorage.getItem('reminderTimeInMinutes') || 30,
-      usertoken: localStorage.getItem('usertoken') || '',
+      reminderTimeInMinutes: store.state.reminderTimeInMinutes || 30,
+      usertoken: store.state.usertoken || '',
       view: 'options'
     }
 
@@ -57,20 +57,24 @@ class OptionsPage extends React.Component {
   handleSubmit (e) {
     e.preventDefault()
 
-    localStorage.setItem('appkey', this.state.appkey)
-    localStorage.setItem('usertoken', this.state.usertoken)
-    localStorage.setItem('reminderEnabled', this.state.reminderEnabled)
-    localStorage.setItem('reminderTimeInMinutes', this.state.reminderTimeInMinutes)
-    localStorage.setItem('autoPauseResume', this.state.autoPauseResume)
-
-    if (!this.state.autoPauseResume) {
-      localStorage.setItem('lastMachineStatus', 'active')
-      localStorage.setItem('trackedTask', '')
-    }
+    store.dispatch({
+      type: 'UPDATE_OPTIONS',
+      payload: {
+        appkey: this.state.appkey,
+        usertoken: this.state.usertoken,
+        reminderEnabled: this.state.reminderEnabled,
+        reminderTimeInMinutes: this.state.reminderTimeInMinutes,
+        autoPauseResume: this.state.autoPauseResume,
+      }
+    })
 
     request.get(url)
       .then(response => {
-        localStorage.setItem('user', JSON.stringify(response.data))
+        store.dispatch({
+          type: 'SET_USER',
+          payload: response.data
+        })
+
         this.setState({
           msg: {
             type: 'success',

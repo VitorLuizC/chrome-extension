@@ -1,8 +1,8 @@
 import React from 'react'
 import style from './style.css'
-import { Link } from 'react-router'
 import PropTypes from 'prop-types'
 import { baseUrl } from '../../cfg'
+import withAuthenticated from '../../HOCs/withAuthenticated'
 
 const url = `${baseUrl}/en-US/tasks`
 
@@ -12,7 +12,7 @@ class PopupHeader extends React.Component {
   }
 
   render () {
-    if (!localStorage.getItem('appkey')) {
+    if (!this.props.authenticated) {
       return (
         <span />
       )
@@ -36,7 +36,8 @@ class PopupHeader extends React.Component {
 }
 
 PopupHeader.propTypes = {
-  title: PropTypes.string.isRequired
+  title: PropTypes.string.isRequired,
+  authenticated: PropTypes.bool.isRequired
 }
 
-export default PopupHeader
+export default withAuthenticated(PopupHeader)

@@ -1,6 +1,9 @@
 import React from 'react'
 import { render } from 'react-dom'
 import OptionsPage from './components/OptionsPage'
-import routes from './routes'
+import store from './store'
 
-render(<OptionsPage />, document.getElementById('runrunTMApp'))
+store.initialization.then(() => {
+  render(<OptionsPage />, document.getElementById('runrunTMApp'))
+})
+

@@ -1,42 +1,21 @@
 import axios from 'axios'
 import moment from 'moment'
 import { baseUrl } from '../cfg'
-
-JSON.isAJSONString = (object) => {
-  try {
-    JSON.parse(object)
-  } catch (e) {
-    return false
-  }
-  return true
-}
+import store from '../store'
 
 class RunrunTasks {
   constructor () {
-    this._tasks
-
-    if (!localStorage.getItem('reminderEnabled')) { localStorage.setItem('reminderEnabled', true) }
-
-    if (!localStorage.getItem('reminderTimeInMinutes')) { localStorage.setItem('reminderTimeInMinutes', 30) }
-
-    if (!localStorage.getItem('lastMachineStatus')) { localStorage.setItem('lastMachineStatus', 'active') }
-
-    if (!localStorage.getItem('trackedTask')) { localStorage.setItem('trackedTask', '') }
-
-    if (!localStorage.getItem('autoPauseResume')) { localStorage.setItem('autoPauseResume', false) }
-
-    this._is_working_on = (localStorage.getItem('is_working_on') && JSON.isAJSONString(localStorage.getItem('is_working_on'))) ? JSON.parse(localStorage.getItem('is_working_on')) : false
-    this._reminder = (localStorage.getItem('reminder')) ? moment(localStorage.getItem('reminder')) : moment()
-    parent = this
-
+    this._tasks = undefined
+    this._is_working_on = store.state.is_working_on
+    this._reminder = moment(store.state.reminder)
     this.updateTasks = this.updateTasks.bind(this)
   }
 
   getHttpClient () {
     const client = axios.create()
     client.interceptors.request.use((config) => {
-      config.headers['App-Key'] = localStorage.getItem('appkey')
-      config.headers['User-Token'] = localStorage.getItem('usertoken')
+      config.headers['App-Key'] = store.state.appkey
+      config.headers['User-Token'] = store.state.usertoken
 
       return config
     })
@@ -45,20 +24,21 @@ class RunrunTasks {
 
   getUser () {
     return new Promise((resolve, reject) => {
-      try {
-        const user = (localStorage.getItem('user')) ? JSON.parse(localStorage.getItem('user')) : {}
-        resolve(user)
-      } catch (error) {
-        const request = this.getHttpClient()
-        request.get(`${baseUrl}/api/v1.0/users/me`)
-          .then(response => {
-            localStorage.setItem('user', JSON.stringify(response.data))
-            resolve(response.data)
-          })
-          .catch(e => {
-            reject(e)
-          })
+      if (store.state.user) {
+        resolve(store.state.user)
+        return
       }
+
+      const request = this.getHttpClient()
+      request.get(`${baseUrl}/api/v1.0/users/me`)
+        .then(response => {
+          store.dispatch({
+            type: 'SET_USER',
+            payload: response.data
+          })
+          resolve(response.data)
+        })
+        .catch(reject)
     })
   }
 
@@ -83,17 +63,17 @@ class RunrunTasks {
           return task.is_working_on
         })
 
-        const trackedTask = localStorage.getItem('trackedTask')
+        const trackedTask = store.state.trackedTask
         if (trackedTask) {
           const trackedTaskOnTaskList = this._tasks.find((task) => {
             return task.id == trackedTask
           })
           if (trackedTaskOnTaskList === undefined || (workingTask !== undefined && workingTask.id !== trackedTaskOnTaskList.id)) {
-            localStorage.setItem('trackedTask', '')
+            store.dispatch({ type: 'STOP_TRACKING_TASK' })
           }
         }
 
-        if (this._is_working_on !== false && workingTask === undefined) {
+        if (this._is_working_on && workingTask === undefined) {
           this._reminder = moment()
           chrome.notifications.create(
             'runrunit_task_notification', {
@@ -104,7 +84,7 @@ class RunrunTasks {
             },
             () => {}
           )
-        } else if (workingTask !== undefined && (this._is_working_on === false || this._is_working_on.id !== workingTask.id)) {
+        } else if (workingTask !== undefined && (!this._is_working_on || this._is_working_on.id !== workingTask.id)) {
           this._reminder = moment()
           chrome.notifications.create(
             'runrunit_task_notification', {
@@ -121,12 +101,12 @@ class RunrunTasks {
           this._is_working_on = workingTask
           chrome.browserAction.setIcon({path: 'images/icon_128_active.png'})
         } else {
-          this._is_working_on = false
+          this._is_working_on = null
           chrome.browserAction.setIcon({path: 'images/icon_128.png'})
         }
 
-        const reminderEnabled = !!((localStorage.getItem('reminderEnabled') && localStorage.getItem('reminderEnabled') == 'true'))
-        const reminderTime = (localStorage.getItem('reminderTimeInMinutes')) ? parseInt(localStorage.getItem('reminderTimeInMinutes')) : 30
+        const reminderEnabled = store.state.reminderEnabled
+        const reminderTime = store.state.reminderTimeInMinutes
         if (reminderEnabled && this._reminder.isSameOrBefore(moment().subtract(reminderTime, 'm'))) {
           this._reminder = moment()
           if (this._is_working_on) {
@@ -152,8 +132,15 @@ class RunrunTasks {
           }
         }
 
-        localStorage.setItem('is_working_on', (this._is_working_on !== false) ? JSON.stringify(this._is_working_on) : false)
-        localStorage.setItem('reminder', this._reminder.format())
+        store.dispatch({
+          type: 'SET_WORKING_ON_TASK',
+          payload: this._is_working_on,
+        })
+
+        store.dispatch({
+          type: 'SET_REMINDER',
+          payload: this._reminder
+        })
 
         chrome.runtime.sendMessage({
           subject: 'taskUpdated',
@@ -185,30 +172,36 @@ class RunrunTasks {
       })
   }
 }
-const UserRunrunTasks = new RunrunTasks()
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'updateTasks') {
-    const hasAppKey = !!localStorage.getItem('appkey')
-    if (hasAppKey && localStorage.getItem('lastMachineStatus') === 'active') { UserRunrunTasks.updateTasks() }
-  }
-})
+store.initialization.then(() => {
+  const UserRunrunTasks = new RunrunTasks()
 
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.subject === 'taskUpdateRequest') {
-    UserRunrunTasks.updateTasks()
-  }
-})
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'updateTasks') {
+      const hasAppKey = !!store.state.appkey
+      if (hasAppKey && store.state.lastMachineStatus === 'active') { UserRunrunTasks.updateTasks() }
+    }
+  })
 
-chrome.idle.setDetectionInterval(15)
-chrome.idle.onStateChanged.addListener(state => {
-  state = (state === 'idle') ? 'active' : state
-  if (localStorage.getItem('autoPauseResume') && localStorage.getItem('autoPauseResume') === 'true' && localStorage.getItem('lastMachineStatus') !== state && localStorage.getItem('trackedTask') !== '') {
-    if (state === 'locked') { UserRunrunTasks.pauseTask(localStorage.getItem('trackedTask')) } else if (state === 'active') { UserRunrunTasks.resumeTask(localStorage.getItem('trackedTask')) }
-  }
-  localStorage.setItem('lastMachineStatus', state)
-})
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.subject === 'taskUpdateRequest') {
+      UserRunrunTasks.updateTasks()
+    }
+  })
 
-chrome.alarms.create('updateTasks', {
-  periodInMinutes: 0.5
+  chrome.idle.setDetectionInterval(15)
+  chrome.idle.onStateChanged.addListener(state => {
+    state = (state === 'idle') ? 'active' : state
+    if (store.state.autoPauseResume && store.state.lastMachineStatus !== state && store.state.trackedTask) {
+      if (state === 'locked') { UserRunrunTasks.pauseTask(store.state.trackedTask) } else if (state === 'active') { UserRunrunTasks.resumeTask(store.state.trackedTask) }
+    }
+    store.dispatch({
+      type: 'SET_MACHINE_STATUS',
+      payload: state
+    })
+  })
+
+  chrome.alarms.create('updateTasks', {
+    periodInMinutes: 0.5
+  })
 })

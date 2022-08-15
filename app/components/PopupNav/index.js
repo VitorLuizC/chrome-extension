@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router'
 import PropTypes from 'prop-types'
+import withAuthenticated from '../../HOCs/withAuthenticated'
 
 class PopupNav extends React.Component {
   constructor (props) {
@@ -11,7 +12,7 @@ class PopupNav extends React.Component {
   }
 
   render () {
-    if (!localStorage.getItem('appkey')) {
+    if (!this.props.authenticated) {
       return (
         <span />
       )
@@ -32,4 +33,4 @@ PopupNav.propTypes = {
   routeName: PropTypes.string.isRequired
 }
 
-export default PopupNav
+export default withAuthenticated(PopupNav)
