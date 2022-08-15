@@ -47,11 +47,11 @@ class Storage {
   }
 
   /**
-   * Watches the changes in the storage's data, and returns a stop watching.
+   * Subscribes into storage's data changes, and returns a function to unsubscribe.
    * @param {(data: TData) => void} fn
    * @returns {() => void}
    */
-  watch(fn) {
+  subscribe(fn) {
     const handler = (changes, area) => {
       if (area !== 'sync') return;
 
