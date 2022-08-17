@@ -22,6 +22,8 @@ class Store {
     this.initialization = new Promise((resolve) => {
       this._markAsInitialized = resolve;
     });
+
+    this._updateState = this._updateState.bind(this)
   }
 
   /**

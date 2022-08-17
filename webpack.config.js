@@ -7,20 +7,20 @@ module.exports = {
   entry: {
     popup: ['babel-polyfill', './app/popup.js'],
     options: ['babel-polyfill', './app/options.js'],
-    background: './app/background/index.js'
+    background: ['babel-polyfill', './app/background/index.js'],
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name].bundle.js'
+    filename: '[name].bundle.js',
+    libraryTarget: 'umd'
   },
   module: {
     rules: [
       {
         test: /\.js$/,
-        exclude: /node_modules/,
         loader: 'babel-loader',
         options: {
-          presets: ['react', 'es2015'],
+          presets: ['react', 'es2015', 'es2016', 'es2017'],
           plugins: ['add-module-exports']
         }
       },
@@ -58,18 +58,18 @@ module.exports = {
         'NODE_ENV': JSON.stringify('production')
       }
     }),
-    new webpack.optimize.UglifyJsPlugin({
-      beautify: false,
-      mangle: {
-        screw_ie8: true,
-        keep_fnames: true
-      },
-      compress: {
-        warnings: false,
-        screw_ie8: true
-      },
-      comments: false
-    }),
+    // new webpack.optimize.UglifyJsPlugin({
+    //   beautify: false,
+    //   mangle: {
+    //     screw_ie8: true,
+    //     keep_fnames: true
+    //   },
+    //   compress: {
+    //     warnings: false,
+    //     screw_ie8: true
+    //   },
+    //   comments: false
+    // }),
     new HtmlWebpackPlugin({
       inject: true,
       filename: 'options.html',

@@ -30,9 +30,9 @@ function withAuthenticated(Wrapped) {
     }
 
     componentWillUnmount() {
-      if (!this.unsubscribe) return
+      if (!this.unsubscribe) return;
 
-      this.unsubscribe()
+      this.unsubscribe();
     }
 
     render() {
@@ -46,4 +46,4 @@ function withAuthenticated(Wrapped) {
   };
 }
 
-export default withAuthenticated
+export default withAuthenticated;
